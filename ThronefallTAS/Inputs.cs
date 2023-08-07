@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace ThronefallTAS;
 
@@ -56,6 +57,19 @@ public static class Converter
         { "tab", Input.Tab },
         { "esc", Input.Esc },
     };
+    private static readonly Dictionary<Input, string> InputToString = new()
+    {
+        { Input.W, "w" },
+        { Input.S, "s" },
+        { Input.A, "a" },
+        { Input.D, "d" },
+        { Input.Space, "space" },
+        { Input.Shift, "shift" },
+        { Input.Ctrl, "ctrl" },
+        { Input.Alt, "alt" },
+        { Input.Tab, "tab" },
+        { Input.Esc, "esc" },
+    };
     
     private static readonly Dictionary<Input, GameAction[]> InputToActions = new()
     {
@@ -104,6 +118,20 @@ public static class Converter
         { GameAxis.MoveHorizontal, "Move Horizontal" },
     };
 
+    private static readonly Dictionary<Input, KeyCode[]> InputToKeyCode = new()
+    {
+        { Input.W, new []{ KeyCode.W } },
+        { Input.S, new []{ KeyCode.S } },
+        { Input.A, new []{ KeyCode.A } },
+        { Input.D, new []{ KeyCode.D } },
+        { Input.Space, new []{ KeyCode.Space } },
+        { Input.Shift, new []{ KeyCode.LeftShift, KeyCode.RightShift } },
+        { Input.Ctrl, new []{ KeyCode.LeftControl, KeyCode.RightControl } },
+        { Input.Alt, new []{ KeyCode.LeftAlt, KeyCode.RightAlt } },
+        { Input.Tab, new []{ KeyCode.Tab } },
+        { Input.Esc, new []{ KeyCode.Escape } },
+    };
+
     public static Input? GetInput(string str)
     {
         return StringToInput.TryGetValue(str, out var value) ? value : null;
@@ -127,5 +155,15 @@ public static class Converter
     public static string GetString(GameAxis input)
     {
         return AxisToString[input];
+    }
+
+    public static IEnumerable<KeyCode> GetKeyCodes(Input input)
+    {
+        return InputToKeyCode[input];
+    }
+
+    public static string GetString(Input input)
+    {
+        return InputToString[input];
     }
 }

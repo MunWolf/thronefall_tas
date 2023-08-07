@@ -10,7 +10,6 @@ public class TasFrame
 
     public void Apply(TasState state)
     {
-        state.PrepareForFrame();
         foreach (var command in Commands)
         {
             command.Apply(state);

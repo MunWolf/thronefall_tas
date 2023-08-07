@@ -10,6 +10,10 @@ Changes from vanilla:
   - 2: Pause/Unpause TAS
   - 3: Reload TAS file
   - 5: Go back to Main Menu
+  - 9: Start/Stop recording
+  - 0: Toggle info panel
+  - Backspace: Enable frame stepping
+  - Enter: Step a frame when frame stepping is enabled
 
 The TAS selects which file to load based on what is set in its configuration file located at Thronefall\BepInEx\config\ThronefallTAS.cfg
 
@@ -34,6 +38,8 @@ A TAS file consist of a series of commands written as follows
 - `axis <direction> <value>` simulates a joystick, direction is h or v for horizontal or vertical and value is any value from 1.0 to -1.0
 - `wait <scene>` waits for a given scene to load before continuing to the next frame
 - `reset` resets all inputs and axis to 0, any input or action defined on that frame after reset still apply
+- `seed <s0> <s1> <s2> <s3>` sets the random state (look at UnityEngine.Random.state)
+- `position <x> <y> <z>` sets the players position
 
 ## Exampe of TAS file:
 ```
@@ -46,5 +52,4 @@ A TAS file consist of a series of commands written as follows
 
 ## TODO
 
-- Add a recording function, writing commands to a file
 - UI to set current frame and modify/save the currently loaded TAS ingame

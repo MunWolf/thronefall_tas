@@ -46,12 +46,12 @@ public static class Input
         {
             return true;
         }
-
+        
         __result = Plugin.Instance.State.ActionDown(actionName);
         return false;
     }
     
-    [HarmonyPatch(typeof(Player), nameof(Player.GetButtonDown), typeof(string))]
+    [HarmonyPatch(typeof(Player), nameof(Player.GetButtonUp), typeof(string))]
     [HarmonyPrefix]
     private static bool GetButtonUp(ref bool __result, string actionName)
     {

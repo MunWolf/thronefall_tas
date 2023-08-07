@@ -3,21 +3,61 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using ThronefallTAS.Commands;
+using UnityEngine;
+using UnityEngine.UIElements;
 using Action = ThronefallTAS.Commands.Action;
 
 namespace ThronefallTAS;
 
 public static class Serializer
 {
+    public class InputFrame
+    {
+        public Dictionary<Input, bool> Inputs = new();
+        public HashSet<string> Loads = new();
+        public UnityEngine.Random.State? State = null;
+
+        public bool Input(Input input)
+        {
+            return Inputs.TryGetValue(input, out var value) && value;
+        }
+    }
+    
     [Conditional("DEBUG")]
     private static void Log(string str)
     {
         Plugin.Log.LogInfo(str);
     }
     
-    public static void Save(string path, IEnumerable<TasFrame> frames)
+    public static void Save(string path, Dictionary<int, InputFrame> frames)
     {
-        using var fs = File.OpenWrite(path);
+        using var writer = new StreamWriter(path);
+        Log($"Saving to {path}");
+        foreach (var value in frames)
+        {
+            Log($"Writing frame {value.Key}");
+            if (value.Value.State.HasValue)
+            {
+                var state = value.Value.State.Value;
+                var output = $"{value.Key}: seed {state.s0} {state.s1} {state.s2} {state.s3}";
+                Log(output);
+                writer.WriteLine(output);
+            }
+            
+            foreach (var command in value.Value.Inputs)
+            {
+                var output = $"{value.Key}: input {Converter.GetString(command.Key)} {(command.Value ? "0" : "1")}";
+                Log(output);
+                writer.WriteLine(output);
+            }
+
+            foreach (var scene in value.Value.Loads)
+            {
+                var output = $"{value.Key}: wait {scene}";
+                Log(output);
+                writer.WriteLine(output);
+            }
+        }
     }
 
     public static int Load(string path, out Dictionary<int, TasFrame> frames)
@@ -40,7 +80,6 @@ public static class Serializer
                 continue;
             }
         
-            
             if (!frames.TryGetValue(output.frame, out var frame))
             {
                 frame = new TasFrame();
@@ -141,43 +180,7 @@ public static class Serializer
                 }
                 
                 var commands = new List<ITasCommand>();
-                foreach (var action in Converter.GetActions(input.Value))
-                {
-                    var id = Converter.GetString(action);
-                    Log($"action {id} {(state ? "1" : "0")} added");
-                    commands.Add(new Action()
-                    {
-                        Id = id,
-                        Value = state
-                    });
-                }
-                
-                switch (input.Value)
-                {
-                    case Input.W:
-                    case Input.S:
-                        Log($"axis h {(input == Input.W ? 1.0f : -1.0f) * (state ? 1 : 0)} added");
-                        commands.Add(
-                            new Axis()
-                            {
-                                Id = Converter.GetString(GameAxis.MoveHorizontal),
-                                Value = (input == Input.W ? 1.0f : -1.0f) * (state ? 1 : 0)
-                            }
-                        );
-                        break;
-                    case Input.A:
-                    case Input.D:
-                        Log($"axis v {(input == Input.A ? 1.0f : -1.0f) * (state ? 1 : 0)} added");
-                        commands.Add(
-                            new Axis()
-                            {
-                                Id = Converter.GetString(GameAxis.MoveHorizontal),
-                                Value = (input == Input.A ? 1.0f : -1.0f) * (state ? 1 : 0)
-                            }
-                        );
-                        break;
-                }
-
+                ParseInput(commands, input.Value, state);
                 return (frame, commands);
             }
             case "axis":
@@ -224,10 +227,83 @@ public static class Serializer
             }
             case "reset":
             {
-                Log($"reset added");
                 return (frame, new List<ITasCommand>
                 {
                     new ResetInput()
+                });
+            }
+            case "seed":
+            {
+                ReadUntilNot(reader, ' ');
+                if (!int.TryParse(ReadUntil(reader, ' '), out var s0))
+                {
+                    Log($"invalid seed.0 on frame {frame}");
+                    break;
+                }
+                
+                ReadUntilNot(reader, ' ');
+                if (!int.TryParse(ReadUntil(reader, ' '), out var s1))
+                {
+                    Log($"invalid seed.1 on frame {frame}");
+                    break;
+                }
+                
+                ReadUntilNot(reader, ' ');
+                if (!int.TryParse(ReadUntil(reader, ' '), out var s2))
+                {
+                    Log($"invalid seed.2 on frame {frame}");
+                    break;
+                }
+                
+                ReadUntilNot(reader, ' ');
+                if (!int.TryParse(ReadUntil(reader, ' '), out var s3))
+                {
+                    Log($"invalid seed.3 on frame {frame}");
+                    break;
+                }
+                
+                Log($"seed {s0} {s1} {s2} {s3} added");
+                return (frame, new List<ITasCommand>
+                {
+                    new SetRandomSeed
+                    {
+                        S0 = s0,
+                        S1 = s1,
+                        S2 = s2,
+                        S3 = s3
+                    }
+                });
+            }
+            case "position":
+            {
+                ReadUntilNot(reader, ' ');
+                if (!float.TryParse(ReadUntil(reader, ' '), out var x))
+                {
+                    Log($"invalid position.x on frame {frame}");
+                    break;
+                }
+                
+                ReadUntilNot(reader, ' ');
+                if (!float.TryParse(ReadUntil(reader, ' '), out var y))
+                {
+                    Log($"invalid position.y on frame {frame}");
+                    break;
+                }
+                
+                ReadUntilNot(reader, ' ');
+                if (!float.TryParse(ReadUntil(reader, ' '), out var z))
+                {
+                    Log($"invalid position.z on frame {frame}");
+                    break;
+                }
+                
+                Log($"position {x} {y} {z} added");
+                return (frame, new List<ITasCommand>
+                {
+                    new SetPosition
+                    {
+                        Position = new Vector3(x, y, z)
+                    }
                 });
             }
             default:
@@ -237,6 +313,47 @@ public static class Serializer
 
         return (-1, null);
     }
+
+    public static void ParseInput(List<ITasCommand> commands, Input input, bool state)
+    {
+        foreach (var action in Converter.GetActions(input))
+        {
+            var id = Converter.GetString(action);
+            Log($"action {id} {(state ? "1" : "0")} added");
+            commands.Add(new Action()
+            {
+                Id = id,
+                Value = state
+            });
+        }
+                
+        switch (input)
+        {
+            case Input.W:
+            case Input.S:
+                Log($"axis h {(input == Input.W ? 1.0f : -1.0f) * (state ? 1 : 0)} added");
+                commands.Add(
+                    new Axis()
+                    {
+                        Id = Converter.GetString(GameAxis.MoveVertical),
+                        Value = (input == Input.W ? 1.0f : -1.0f) * (state ? 1 : 0)
+                    }
+                );
+                break;
+            case Input.A:
+            case Input.D:
+                Log($"axis v {(input == Input.D ? 1.0f : -1.0f) * (state ? 1 : 0)} added");
+                commands.Add(
+                    new Axis()
+                    {
+                        Id = Converter.GetString(GameAxis.MoveHorizontal),
+                        Value = (input == Input.D ? 1.0f : -1.0f) * (state ? 1 : 0)
+                    }
+                );
+                break;
+        }
+    }
+    
 
     private static string ReadUntil(TextReader reader, char c, bool discard = true)
     {

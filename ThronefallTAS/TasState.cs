@@ -4,12 +4,12 @@ namespace ThronefallTAS;
 
 public class TasState
 {
-    public List<string> WaitForScenes = new();
+    public readonly List<string> WaitForScenes = new();
 
-    private Dictionary<string, float> _axis = new();
-    private Dictionary<string, bool> _actions = new();
-    private HashSet<string> _actionsDown = new();
-    private HashSet<string> _actionsUp = new();
+    private readonly Dictionary<string, float> _axis = new();
+    private readonly Dictionary<string, bool> _actions = new();
+    private readonly HashSet<string> _actionsDown = new();
+    private readonly HashSet<string> _actionsUp = new();
 
     public void Reset()
     {
@@ -70,7 +70,7 @@ public class TasState
         }
     }
 
-    private static void UpdateActionUpDown(string action, HashSet<string> toSet, HashSet<string> toCheck)
+    private static void UpdateActionUpDown(string action, ISet<string> toSet, ICollection<string> toCheck)
     {
         if (!toCheck.Contains(action))
         {
@@ -82,7 +82,7 @@ public class TasState
         }
     }
     
-    public void PrepareForFrame()
+    public void Update()
     {
         // Reset single frame dictionaries.
         _actionsDown.Clear();
