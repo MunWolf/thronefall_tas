@@ -9,19 +9,19 @@ public static class Input
     [HarmonyPrefix]
     private static bool HandleMouseNavigation()
     {
-        return !Plugin.TasRunning;
+        return !Plugin.Instance.Running;
     }
     
     [HarmonyPatch(typeof(Player), nameof(Player.GetAxis), typeof(string))]
     [HarmonyPrefix]
     private static bool GetAxis(ref float __result, string actionName)
     {
-        if (!Plugin.TasRunning)
+        if (!Plugin.Instance.Running)
         {
             return true;
         }
         
-        __result = Plugin.TasState.Axis(actionName);
+        __result = Plugin.Instance.State.Axis(actionName);
         return false;
     }
     
@@ -29,12 +29,12 @@ public static class Input
     [HarmonyPrefix]
     private static bool GetButton(ref bool __result, string actionName)
     {
-        if (!Plugin.TasRunning)
+        if (!Plugin.Instance.Running)
         {
             return true;
         }
 
-        __result = Plugin.TasState.Action(actionName);
+        __result = Plugin.Instance.State.Action(actionName);
         return false;
     }
     
@@ -42,12 +42,12 @@ public static class Input
     [HarmonyPrefix]
     private static bool GetButtonDown(ref bool __result, string actionName)
     {
-        if (!Plugin.TasRunning)
+        if (!Plugin.Instance.Running)
         {
             return true;
         }
 
-        __result = Plugin.TasState.ActionDown(actionName);
+        __result = Plugin.Instance.State.ActionDown(actionName);
         return false;
     }
     
@@ -55,12 +55,12 @@ public static class Input
     [HarmonyPrefix]
     private static bool GetButtonUp(ref bool __result, string actionName)
     {
-        if (!Plugin.TasRunning)
+        if (!Plugin.Instance.Running)
         {
             return true;
         }
 
-        __result = Plugin.TasState.ActionUp(actionName);
+        __result = Plugin.Instance.State.ActionUp(actionName);
         return false;
     }
 }

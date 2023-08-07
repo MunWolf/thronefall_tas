@@ -20,10 +20,10 @@ public static class Serializer
         using var fs = File.OpenWrite(path);
     }
 
-    public static Dictionary<int, TasFrame> Load(string path)
+    public static int Load(string path, out Dictionary<int, TasFrame> frames)
     {
         Log($"Starting loading TAS");
-        var frames = new Dictionary<int, TasFrame>();
+        frames = new Dictionary<int, TasFrame>();
         using var fs = File.OpenRead(path);
         var reader = new StreamReader(fs);
         var highest = 0;
@@ -102,7 +102,7 @@ public static class Serializer
         
         Plugin.Log.LogInfo($"Loaded {path} with {frames.Count} frames, ends at {highest}");
 
-        return frames;
+        return highest;
     }
 
     private static (int frame, List<ITasCommand> commands) ReadCommand(TextReader reader)

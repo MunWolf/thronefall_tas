@@ -3,6 +3,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using ThronefallTAS.UI;
 using ThronefallTAS.Patches;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,31 +15,35 @@ namespace ThronefallTAS
     [DefaultExecutionOrder(-10000000)]
     public class Plugin : BaseUnityPlugin
     {
-        public enum State
-        {
-            Idle,
-            Running,
-            Paused
-        }
-        
+        public ConfigEntry<bool> ShowInfoPanelOnStartup;
         private ConfigEntry<string> _tasPath;
+        private ConfigEntry<string> _recordingPath;
         
+        public static Plugin Instance { get; private set; }
         public static ManualLogSource Log { get; private set; }
 
-        public static bool TasRunning { get; private set; }
-        public static TasState TasState { get; private set; } = new();
+        public bool Recording { get; private set; }
+        public bool Running { get; private set; }
+        public bool Paused { get; private set; }
+        
+        public TasState State { get; private set; } = new();
+        public int CurrentFrame { get; private set; }
 
         private Dictionary<int, TasFrame> _tasFrames = new();
-        private int _currentFrame;
-        private bool _paused;
+        private int _lastFrame;
         
         private void Awake()
         {
+            Instance = this;
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
             Log = Logger;
 
             _tasPath = Config.Bind("General", "TasPath", "C:/tas.txt", "Path to the Tas to launch");
+            _recordingPath = Config.Bind("General", "RecordingPath", "C:/recording.txt", "Path to the file we record to");
+            ShowInfoPanelOnStartup = Config.Bind("General", "ShowInfoAtStartup", false, "If the info panel is shown on startup");
 
+            UIManager.Initialize();
+            
             var harmony = new Harmony("com.badwolf.thronefall_tas");
             harmony.PatchAll(typeof(UpdateToFixedUpdate));
             harmony.PatchAll(typeof(Patches.Input));
@@ -49,41 +54,47 @@ namespace ThronefallTAS
             UpdateToFixedUpdate.SetTargetFPS(60);
             SceneManager.sceneLoaded += OnSceneChanged;
             
-            _tasFrames = Serializer.Load(_tasPath.Value);
+            _lastFrame = Serializer.Load(_tasPath.Value, out _tasFrames);
         }
 
         private void StartTas()
         {
-            TasRunning = true;
-            TasState = new TasState();
-            _currentFrame = 0;
+            Running = true;
+            State = new TasState();
+            CurrentFrame = 0;
         }
         
         private void Update()
         {
             HandleTasControls();
             
-            if (!TasRunning || _paused || TasState.WaitForScenes.Count > 0)
+            if (!Running || Paused || State.WaitForScenes.Count > 0)
             {
                 return;
             }
 
-            
-            if (_tasFrames.TryGetValue(_currentFrame, out var frame))
+            if (_tasFrames.TryGetValue(CurrentFrame, out var frame))
             {
-                Log.LogInfo($"applying frame {_currentFrame}");
-                frame.Apply(TasState);
+                Log.LogInfo($"applying frame {CurrentFrame}");
+                frame.Apply(State);
             }
-            
-            ++_currentFrame;
+
+            if (CurrentFrame >= _lastFrame)
+            {
+                Running = false;
+            }
+            else
+            {
+                ++CurrentFrame;
+            }
         }
 
         private void HandleTasControls()
         {
             if (UnityEngine.Input.GetKeyDown(KeyCode.Alpha3))
             {
-                _tasFrames = Serializer.Load(_tasPath.Value);
-                if (TasRunning)
+                _lastFrame = Serializer.Load(_tasPath.Value, out _tasFrames);
+                if (Running)
                 {
                     Log.LogInfo($"Started TAS");
                     StartTas();
@@ -92,15 +103,15 @@ namespace ThronefallTAS
             
             if (UnityEngine.Input.GetKeyDown(KeyCode.Alpha2))
             {
-                _paused = !_paused;
-                Time.timeScale = _paused ? 0 : 1;
-                Log.LogInfo(_paused ? "Paused TAS" : "Resumed TAS");
+                Paused = !Paused;
+                Time.timeScale = Paused ? 0 : 1;
+                Log.LogInfo(Paused ? "Paused TAS" : "Resumed TAS");
             }
             
             if (UnityEngine.Input.GetKeyDown(KeyCode.Alpha1))
             {
-                TasRunning = !TasRunning;
-                if (TasRunning)
+                Running = !Running;
+                if (Running)
                 {
                     Log.LogInfo($"Started TAS");
                     StartTas();
@@ -116,12 +127,18 @@ namespace ThronefallTAS
                 Log.LogInfo($"Go to Main Menu");
                 SceneTransitionManager.instance.TransitionToMainMenu();
             }
+
+            if (UnityEngine.Input.GetKeyDown(KeyCode.Alpha0))
+            {
+                Log.LogInfo($"Toggle info panel");
+                UIManager.ToggleInfoPanel();
+            }
         }
         
         private void OnSceneChanged(Scene scene, LoadSceneMode mode)
         {
             Log.LogInfo($"Scene loaded: {scene.name}");
-            TasState.WaitForScenes.Remove(scene.name);
+            State.WaitForScenes.Remove(scene.name);
         }
     }
 }
