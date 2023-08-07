@@ -1,0 +1,50 @@
+# Thronefall TAS
+
+Used to run tas files made for Thronefall
+
+Changes from vanilla:
+- Game is forced to run at 60 fps, if the computer fails to maintain that amount it will slow down gameplay as delta time is always 1 / 60 seconds
+- Ingame Inputs are overwritten by the TAS when it is running.
+- TAS control keys added
+  - 1: Start/Stop TAS
+  - 2: Pause/Unpause TAS
+  - 3: Reload TAS file
+  - 5: Go back to Main Menu
+
+The TAS selects which file to load based on what is set in its configuration file located at Thronefall\BepInEx\config\ThronefallTAS.cfg
+
+## TAS File
+
+A TAS file consist of a series of commands written as follows
+<frame number>: <command> <parameters>
+
+### TAS Commands
+
+- `input <key> <1|0>` simulates a button press, 1 is down and 0 is up, available keys are
+  - w
+  - a
+  - s
+  - d
+  - space
+  - shift
+  - ctrl
+  - alt
+  - tab
+  - esc
+- `axis <direction> <value>` simulates a joystick, direction is h or v for horizontal or vertical and value is any value from 1.0 to -1.0
+- `wait <scene>` waits for a given scene to load before continuing to the next frame
+- `reset` resets all inputs and axis to 0, any input or action defined on that frame after reset still apply
+
+## Exampe of TAS file:
+```
+0: input space 1
+1: input space 0
+1: wait _LevelSelect
+2: input w 1
+120: input w 0
+```
+
+## TODO
+
+- Add a recording function, writing commands to a file
+- UI to set current frame and modify/save the currently loaded TAS ingame
